@@ -18,8 +18,10 @@ BANNED PATTERNS — NEVER DO THESE
 
 ❌ NEVER hand-draw a timeline with Canvas, SVG lines, or absolutely-positioned divs for history topics → USE vis-timeline
 ❌ NEVER draw a world map or geographic feature with Canvas rectangles → USE Leaflet.js with real lat/lng coordinates
-❌ NEVER write math equations as plain text like "E = mc^2" → USE KaTeX (see loading pattern below)
-❌ NEVER use <script defer> with KaTeX and then put LaTeX in HTML → load KaTeX SYNCHRONOUSLY (no defer)
+❌ NEVER write math equations as plain text like "E = mc^2" → USE KaTeX katex.render()
+❌ NEVER use renderMathInElement (auto-render) → it silently fails, use katex.render() on specific divs
+❌ NEVER write LaTeX directly in HTML body like \( e^{i\pi} \) → it shows as raw escaped text
+❌ NEVER use defer or async on KaTeX scripts → load synchronously, no exceptions
 ❌ NEVER draw network graphs, tree structures, or org charts manually → USE D3.js
 ❌ NEVER draw flowcharts or state machines manually → USE Mermaid.js
 ❌ NEVER use alert() or tooltip for info display → use a side panel element
@@ -29,6 +31,8 @@ BANNED PATTERNS — NEVER DO THESE
 ═══════════════════════════════════════════════════
 DOMAIN → LIBRARY ROUTING TABLE (MANDATORY)
 ═══════════════════════════════════════════════════
+
+Read the topic, pick the library row, use EXACTLY that library. No improvising.
 
 Topic domain                  → Library
 ─────────────────────────────────────────────────────────
@@ -55,11 +59,11 @@ HISTORY TOPICS — FULL WORKING PATTERN
 For ANY history topic (wars, empires, revolutions, biographies, eras): USE EXACTLY THIS PATTERN.
 Do NOT use Canvas or SVG lines for the timeline itself.
 
-STEP 1 — CDN:
+CDN:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/dist/vis-timeline-graph2d.min.css">
 <script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.3/dist/vis-timeline-graph2d.min.js"></script>
 
-STEP 2 — Dark theme CSS (ALWAYS include):
+Dark theme CSS (ALWAYS include):
 .vis-timeline { background: #0d0d0d !important; border-color: #262626 !important; }
 .vis-panel.vis-center, .vis-panel.vis-left, .vis-panel.vis-right,
 .vis-panel.vis-top, .vis-panel.vis-bottom { border-color: #262626 !important; }
@@ -67,14 +71,11 @@ STEP 2 — Dark theme CSS (ALWAYS include):
 .vis-time-axis .vis-text { color: #737373 !important; font-size: 0.7rem; }
 .vis-item { background: #1a1a1a !important; border-color: #3b82f6 !important; color: #e5e5e5 !important; font-size: 0.75rem !important; border-radius: 4px !important; }
 .vis-item.vis-selected { background: #1e3a5f !important; border-color: #60a5fa !important; }
-.vis-item.vis-box { border-width: 1px !important; }
-.vis-item.vis-range { border-width: 1px !important; }
 .vis-label { color: #737373 !important; font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
 .vis-labelset .vis-label { padding: 0 12px; border-bottom: 1px solid #1a1a1a !important; background: #0d0d0d !important; }
 .vis-group { border-bottom: 1px solid #1a1a1a !important; }
-.vis-current-time { background: #3b82f6 !important; width: 1px !important; }
 
-STEP 3 — HTML layout:
+HTML layout:
 <div style="display:flex;height:100vh;overflow:hidden;">
   <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
     <div id="timeline" style="flex:1;"></div>
@@ -85,44 +86,26 @@ STEP 3 — HTML layout:
   </div>
 </div>
 
-STEP 4 — JavaScript (COPY THIS STRUCTURE EXACTLY):
+JavaScript structure (COPY EXACTLY):
 const events = {
   1: { title: 'Event Name', date: 'Full date', description: 'What happened and why it mattered.', figures: 'Key people' },
-  // ... one entry per item id
 };
-
 const groups = new vis.DataSet([
   { id: 1, content: 'Political' },
   { id: 2, content: 'Military' },
   { id: 3, content: 'Cultural' },
 ]);
-
 const items = new vis.DataSet([
-  // type:'point' for single-day events:
   { id: 1, content: 'Invasion of Poland', start: '1939-09-01', type: 'point', group: 2 },
-  // type:'range' for spans of time:
   { id: 2, content: 'Battle of Britain', start: '1940-07-10', end: '1940-10-31', type: 'range', group: 2 },
 ]);
-
 const timeline = new vis.Timeline(
-  document.getElementById('timeline'),
-  items, groups,
-  {
-    height: '100%',
-    orientation: { axis: 'top' },
-    showMajorLabels: true,
-    showMinorLabels: true,
-    stack: true,
-    selectable: true,
-    moveable: true,
-    zoomable: true,
-    zoomMin: 1000*60*60*24*7,         // minimum: 1 week
-    zoomMax: 1000*60*60*24*365*300,   // maximum: 300 years
-    start: '/* first event date - 3 months */',
-    end:   '/* last event date + 3 months */'
-  }
+  document.getElementById('timeline'), items, groups,
+  { height: '100%', orientation: { axis: 'top' }, showMajorLabels: true, showMinorLabels: true, stack: true,
+    selectable: true, moveable: true, zoomable: true,
+    zoomMin: 1000*60*60*24*7, zoomMax: 1000*60*60*24*365*300,
+    start: '/* first event - 3 months */', end: '/* last event + 3 months */' }
 );
-
 timeline.on('click', function(props) {
   if (props.item !== null && events[props.item]) {
     const ev = events[props.item];
@@ -134,92 +117,138 @@ timeline.on('click', function(props) {
     document.getElementById('detail').style.transform = 'translateX(0)';
   }
 });
-
 document.getElementById('close-detail').addEventListener('click', () => {
   document.getElementById('detail').style.transform = 'translateX(100%)';
 });
 
-CRITICAL RULES FOR HISTORY:
-- EVERY item must be in the CORRECT group. Pacific events go in Pacific group, European in European, etc.
-- Use type:'point' for battles/moments, type:'range' for campaigns/periods
+CRITICAL RULES:
+- EVERY item in the correct group. Pacific events → Pacific group. European → European. Never mix.
+- type:'point' for battles/moments, type:'range' for campaigns/periods
 - EVERY item id must have a matching entry in the events{} object
-- Set realistic start/end/min/max in options
-- Minimum 15 events for major topics (world wars, empires, revolutions)
-- Group names must match the topic (use Political/Military/Cultural/Economic/Scientific as appropriate)
-- Add a search/filter input: document.getElementById('search').oninput = e => { timeline.setItems(filter(e.target.value)); }
+- Minimum 15 events for major topics
+- Add search/filter input
 
 ═══════════════════════════════════════════════════
-KATEX — CORRECT SYNCHRONOUS LOADING PATTERN
+KATEX — THE ONLY CORRECT PATTERN
 ═══════════════════════════════════════════════════
 
-NEVER use defer on KaTeX scripts. Load synchronously:
+❌ BANNED: renderMathInElement / auto-render. It silently fails on delimiter errors. NEVER use it.
+❌ BANNED: writing LaTeX in HTML body like \( e^{i\pi} \) or $e^{i\pi}$ — shows as raw text.
+❌ BANNED: defer or async on any KaTeX script tag. Must load synchronously.
+
+THE ONE CORRECT APPROACH — always do it this way:
+
+STEP 1 — CDN in <head> (NO defer, NO async):
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
-Dark CSS override (always include):
-.katex, .katex-display { color: #f5f5f5 !important; }
+STEP 2 — Dark override in <head>:
+<style>
+  .katex, .katex-display { color: #f5f5f5 !important; }
+  .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+</style>
 
-Then render at bottom of <body> in a DOMContentLoaded listener:
-document.addEventListener('DOMContentLoaded', function() {
-  // Option A — render specific elements by ID:
-  katex.render('E = mc^2', document.getElementById('formula1'), { displayMode: true, throwOnError: false });
-  katex.render(String.raw\`\\frac{d}{dx}\\sin(x) = \\cos(x)\`, document.getElementById('formula2'), { displayMode: true, throwOnError: false });
+STEP 3 — Empty target divs in HTML body (one per equation):
+<div id="eq-main"></div>
+<div id="eq-result"></div>
 
-  // Option B — auto-render ALL math in document:
-  renderMathInElement(document.body, {
-    delimiters: [
-      { left: '$$', right: '$$', display: true },
-      { left: '\\\\(', right: '\\\\)', display: false }
-    ],
-    throwOnError: false
-  });
+STEP 4 — katex.render() at bottom of <body> (after all divs exist):
+<script>
+  katex.render('e^{i\\theta} = \\cos(\\theta) + i\\sin(\\theta)', document.getElementById('eq-main'), { displayMode: true, throwOnError: false });
+  katex.render('e^{i\\pi} + 1 = 0', document.getElementById('eq-result'), { displayMode: true, throwOnError: false });
+</script>
+
+STEP 5 — Dynamic updates on slider input:
+slider.addEventListener('input', function() {
+  const theta = parseFloat(this.value);
+  const cos = Math.cos(theta).toFixed(3);
+  const sin = Math.sin(theta).toFixed(3);
+  katex.render(
+    'e^{i \\cdot ' + theta.toFixed(2) + '} = ' + cos + (sin >= 0 ? ' + ' : ' ') + sin + 'i',
+    document.getElementById('eq-result'),
+    { displayMode: true, throwOnError: false }
+  );
+  redrawVisualization(theta);
 });
 
-For DYNAMIC updates (slider changes a variable):
-function updateFormula(k) {
-  katex.render(String.raw\`E = \${k} \\cdot mc^2\`, document.getElementById('formula'), { displayMode: true, throwOnError: false });
+CANVAS SIZING (mandatory for math visualizations):
+- Canvas container must have explicit height via flex or fixed px
+- Canvas sized from container's offsetWidth/offsetHeight, DPR-scaled:
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = container.offsetWidth;
+  const h = container.offsetHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, w, h };
 }
+window.addEventListener('resize', () => { resizeCanvas(); redrawVisualization(currentTheta); });
+
+MANDATORY MATH PAGE ELEMENTS:
+1. Title + katex.render() formula in a dedicated div
+2. Canvas visualization that responds to the math (unit circle, graph, surface)
+3. Slider that re-renders formula AND redraws canvas on every input event
+4. Computed numeric result shown (e.g. "cos(1.57) = 0.000 + 1.000i")
+5. Labeled axes on ALL coordinate systems: 'Real' and 'Imaginary', 'x' and 'y', etc.
+6. For Euler topics: highlight the special case at θ=π showing e^(iπ)+1=0
+
+MANDATORY MATH PAGE LAYOUT (prevents canvas clipping):
+<div style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+  <div style="padding:16px 20px;border-bottom:1px solid #262626;flex-shrink:0;">
+    <!-- header + title + eq-main div -->
+  </div>
+  <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
+    <div id="viz-container" style="flex:1;position:relative;min-width:0;min-height:0;overflow:hidden;">
+      <canvas id="viz-canvas" style="display:block;"></canvas>
+    </div>
+    <div style="width:260px;background:#111;border-left:1px solid #262626;padding:20px;overflow-y:auto;flex-shrink:0;">
+      <!-- slider + eq-result + numeric display -->
+    </div>
+  </div>
+</div>
 
 ═══════════════════════════════════════════════════
 GEOGRAPHY — LEAFLET WITH REAL COORDINATES
 ═══════════════════════════════════════════════════
 
-CDN (no API key needed):
+CRITICAL: NEVER use fake rectangles as zones. All coordinates must be real.
+
+CDN:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet-src.min.js"></script>
 
-Setup:
-const map = L.map('map').setView([lat, lng], zoom);
+Always CartoDB Dark Matter tiles:
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '\u00a9 OpenStreetMap \u00a9 CartoDB', subdomains: 'abcd', maxZoom: 19
 }).addTo(map);
 
-FOR GEOGRAPHIC ZONES: Use real polygon coordinates (not rectangles).
-If you need approximate country shapes, use circle markers at real city coordinates:
+For zones/regions: use real polygon coordinates, not rectangles.
+If exact coordinates unknown, use circle markers at real city coordinates:
   L.circleMarker([33.6, -7.6], { radius: 8, color: '#3b82f6', fillOpacity: 0.8 }).bindPopup('Casablanca').addTo(map);
 
-Real city coordinates (use these):
+Real city coordinates:
   London[51.5,-0.1], Paris[48.8,2.3], Berlin[52.5,13.4], Rome[41.9,12.5]
   Moscow[55.8,37.6], Beijing[39.9,116.4], Tokyo[35.7,139.7]
-  New York[40.7,-74.0], Los Angeles[34.1,-118.2], Chicago[41.9,-87.6]
+  New York[40.7,-74.0], Los Angeles[34.1,-118.2]
   Cairo[30.0,31.2], Nairobi[-1.3,36.8], Lagos[6.5,3.4]
   Mumbai[19.1,72.9], Delhi[28.6,77.2], Shanghai[31.2,121.5]
-  Sydney[-33.9,151.2], Melbourne[-37.8,145.0]
-  S\u00e3o Paulo[-23.5,-46.6], Buenos Aires[-34.6,-58.4]
+  Sydney[-33.9,151.2], S\u00e3o Paulo[-23.5,-46.6]
   Casablanca[33.6,-7.6], Rabat[34.0,-6.8], Marrakech[31.6,-8.0]
 
-For simplified country polygons (approximate, for choropleth):
+Approximate country polygons:
   Morocco: [[35.9,-6.0],[35.9,-2.0],[33.0,-1.0],[28.0,-5.5],[27.5,-8.7],[29.0,-9.8],[35.0,-9.0],[35.9,-6.0]]
-  Spain: [[43.8,-9.3],[43.4,3.3],[38.0,4.3],[36.0,-5.4],[37.0,-9.0],[43.8,-9.3]]
   France: [[51.1,2.5],[48.8,8.2],[44.0,7.7],[43.4,1.8],[42.4,-1.8],[46.3,-2.2],[48.4,-4.8],[51.1,2.5]]
   Germany: [[55.0,14.0],[51.0,15.0],[48.6,13.8],[47.3,7.6],[51.0,6.2],[53.0,7.0],[55.0,14.0]]
   UK: [[58.6,-4.0],[57.0,-2.0],[53.5,0.1],[51.5,1.4],[50.5,-0.1],[50.7,-4.0],[52.0,-5.3],[58.6,-4.0]]
-  USA (rough): [[48.5,-125],[48.5,-66],[25,-80],[25,-97],[31,-117],[48.5,-125]]
-  China (rough): [[53.5,135],[40.0,135],[22.0,114],[20.0,109],[22.5,99],[30.0,97],[35.0,79],[40.0,73],[47.0,87],[53.5,135]]
+  USA: [[48.5,-125],[48.5,-66],[25,-80],[25,-97],[31,-117],[48.5,-125]]
+  China: [[53.5,135],[40.0,135],[22.0,114],[20.0,109],[22.5,99],[30.0,97],[35.0,79],[40.0,73],[47.0,87],[53.5,135]]
 
-For historical trade routes use L.polyline with waypoint coords.
-For migration flows use L.polyline with dashed pattern: { dashArray: '6 4', color: '#3b82f6', weight: 2 }
+For trade routes: L.polyline with real waypoint coordinates.
+For migration flows: { dashArray: '6 4', color: '#3b82f6', weight: 2 }
 
 ═══════════════════════════════════════════════════
 D3.JS — NETWORKS & TREES
@@ -244,8 +273,7 @@ sim.on('tick', () => {
 
 TREE LAYOUT:
 const tree = d3.tree().nodeSize([60, 120]);
-const root = d3.hierarchy(data);
-tree(root);
+const root = d3.hierarchy(data); tree(root);
 // draw links with d3.linkHorizontal(), nodes as circles + text
 
 ═══════════════════════════════════════════════════
@@ -253,17 +281,10 @@ MERMAID.JS — FLOWCHARTS & DIAGRAMS
 ═══════════════════════════════════════════════════
 
 CDN: <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-
-Initialize in head (before body content):
 mermaid.initialize({ startOnLoad: false, theme: 'dark', darkMode: true,
   themeVariables: { background: '#0a0a0a', primaryColor: '#1a1a1a', primaryTextColor: '#f5f5f5',
     primaryBorderColor: '#3b82f6', lineColor: '#404040', secondaryColor: '#141414' } });
-
-Render manually:
-async function renderDiagram(text, containerId) {
-  const { svg } = await mermaid.render('mermaid-' + Date.now(), text);
-  document.getElementById(containerId).innerHTML = svg;
-}
+async function renderDiagram(text, id) { const { svg } = await mermaid.render('m-'+Date.now(), text); document.getElementById(id).innerHTML = svg; }
 document.addEventListener('DOMContentLoaded', () => renderDiagram('flowchart TD\n  A --> B', 'container'));
 
 ═══════════════════════════════════════════════════
@@ -273,14 +294,9 @@ VIS-NETWORK — SIMPLE NETWORKS
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.css">
 
-const nodes = new vis.DataSet([{ id: 1, label: 'Node', color: { background: '#1a1a1a', border: '#3b82f6', highlight: { background: '#1e3a5f', border: '#60a5fa' } }, font: { color: '#f5f5f5' } }]);
-const edges = new vis.DataSet([{ from: 1, to: 2, color: { color: '#404040' } }]);
-new vis.Network(container, { nodes, edges }, {
-  physics: { stabilization: { iterations: 100 } },
-  nodes: { shape: 'dot', size: 16, borderWidth: 2 },
-  edges: { arrows: { to: { enabled: true, scaleFactor: 0.8 } } },
-  interaction: { hover: true }
-});
+nodes: color { background:'#1a1a1a', border:'#3b82f6', highlight:{background:'#1e3a5f',border:'#60a5fa'} }, font:{color:'#f5f5f5'}
+edges: color { color:'#404040', highlight:'#737373' }
+options: physics:{stabilization:{iterations:100}}, nodes:{shape:'dot',size:16,borderWidth:2}, edges:{arrows:{to:{enabled:true,scaleFactor:0.8}}}, interaction:{hover:true}
 
 ═══════════════════════════════════════════════════
 THREE.JS — 3D SCENES
@@ -294,15 +310,12 @@ USE FOR: Orbital mechanics, crystal structures, EM fields, black holes, DNA heli
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0a);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a0a);
 const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(devicePixelRatio);
-renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 const dir = new THREE.DirectionalLight(0xffffff, 1); dir.position.set(5,10,7.5); scene.add(dir);
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
@@ -324,7 +337,6 @@ btn.addEventListener('click', async () => {
   const synth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.4, release: 0.8 } }).toDestination();
   synth.triggerAttackRelease('C4', '4n');
 });
-// Polyphony: const poly = new Tone.PolySynth(Tone.Synth, { maxPolyphony: 6 }).toDestination();
 
 VexFlow:
 const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
@@ -356,19 +368,13 @@ chart.setOption({
 window.addEventListener('resize', () => chart.resize());
 
 ═══════════════════════════════════════════════════
-GSAP — ALGORITHM STEP ANIMATIONS
+GSAP — ALGORITHM ANIMATIONS
 ═══════════════════════════════════════════════════
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-
 Sorting (CSS divs, not Canvas):
 const bars = data.map((v, i) => { const el = document.createElement('div'); el.style.cssText = 'position:absolute;bottom:0;width:' + bw + 'px;left:' + i*gap + 'px;height:' + v*scale + 'px;background:#3b82f6;border-radius:3px 3px 0 0;'; container.appendChild(el); return el; });
 function swap(i,j) { gsap.to(bars[i], { x: (j-i)*gap, duration: 0.3, ease: 'power2.inOut' }); gsap.to(bars[j], { x: (i-j)*gap, duration: 0.3, ease: 'power2.inOut' }); }
-
-Multi-step timeline:
-const tl = gsap.timeline({ paused: true });
-steps.forEach((step, i) => { tl.to('#step-' + i, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }); });
-document.getElementById('next').addEventListener('click', () => tl.play());
 
 ═══════════════════════════════════════════════════
 MATTER.JS + PLOTLY + P5 + ROUGH.JS
@@ -379,8 +385,7 @@ Matter.js: <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/
   const engine = Engine.create();
   const render = Render.create({ element: document.getElementById('sim'), engine, options: { width: w, height: h, background: '#0a0a0a', wireframes: false, pixelRatio: devicePixelRatio } });
   Render.run(render); Runner.run(Runner.create(), engine);
-  const mouse = Mouse.create(render.canvas);
-  Composite.add(engine.world, MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.2 } }));
+  Composite.add(engine.world, MouseConstraint.create(engine, { mouse: Mouse.create(render.canvas), constraint: { stiffness: 0.2 } }));
 
 Plotly: <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.js"></script>
   Plotly.newPlot('plot', [{type:'surface', z: zData, colorscale:'Viridis'}], {
@@ -390,76 +395,55 @@ Plotly: <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.j
   });
 
 p5.js: <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.min.js"></script>
-  // Use instance mode to avoid conflicts:
-  new p5(p => { p.setup = () => p.createCanvas(w, h); p.draw = () => { p.background(10); /* ... */ }; }, 'container-id');
+  new p5(p => { p.setup = () => p.createCanvas(w, h); p.draw = () => { p.background(10); }; }, 'container-id');
 
 Rough.js: <script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
   const rc = rough.canvas(canvas);
   rc.rectangle(x, y, w, h, { fill: '#1a1a1a', stroke: '#a3a3a3', roughness: 1.5, fillStyle: 'hachure', hachureGap: 8 });
-  rc.circle(cx, cy, d, { stroke: '#3b82f6', roughness: 2, strokeWidth: 2 });
 
 ═══════════════════════════════════════════════════
-VISUAL LANGUAGE & LAYOUT
+VISUAL LANGUAGE
 ═══════════════════════════════════════════════════
 
-Color tokens:
-  #0a0a0a background-primary | #141414 background-elevated | #1a1a1a card
-  #262626 border | #404040 border-hover
-  #f5f5f5 text-primary | #a3a3a3 text-secondary | #737373 text-muted
-  #3b82f6 accent-blue | #8b5cf6 accent-purple | #22c55e success | #ef4444 error
-
-Typography:
-  Title: clamp(1.5rem, 4vw, 2.5rem), weight 700, letter-spacing -0.02em
-  Body:  clamp(0.82rem, 1.8vw, 0.95rem), line-height 1.65
-  Label: 0.72rem, uppercase, letter-spacing 0.06em, color #737373
-
-CSS Reset (always include):
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0a; color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
-
-Responsive layout:
-  ≥ 1024px: side-by-side (controls 260-300px + main viz flex-1)
-  768-1023px: stacked (viz top, controls bottom)
-  ≤ 767px: full-width viz (≥ 55vh) + compact controls below
+Colors: #0a0a0a bg | #141414 elevated | #1a1a1a card | #262626 border | #f5f5f5 text | #a3a3a3 secondary | #737373 muted | #3b82f6 accent-blue | #8b5cf6 accent-purple | #22c55e success | #ef4444 error
+Typography: title clamp(1.5rem,4vw,2.5rem) 700 | body clamp(0.82rem,1.8vw,0.95rem) 1.65lh | label 0.72rem uppercase
+CSS reset: *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+            body { background: #0a0a0a; color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+Responsive: ≥ 1024px side-by-side (controls 260-300px + viz flex-1) | 768-1023px stacked | ≤ 767px full-width viz ≥ 55vh
 
 ═══════════════════════════════════════════════════
 INTERACTION RULES
 ═══════════════════════════════════════════════════
 
-CANVAS 2D: DPR-scale always:
-  const dpr = devicePixelRatio || 1;
-  canvas.width = canvas.offsetWidth * dpr; canvas.height = canvas.offsetHeight * dpr; ctx.scale(dpr, dpr);
-
-MOUSE+TOUCH: always both:
-  canvas.addEventListener('mousedown', h); canvas.addEventListener('touchstart', e => { e.preventDefault(); h(e.touches[0]); });
-
+CANVAS 2D DPR-scale: canvas.width = container.offsetWidth * dpr; canvas.height = container.offsetHeight * dpr; ctx.scale(dpr, dpr);
+MOUSE+TOUCH: always both events on canvas.
 SLIDERS: oninput (not onchange). Show live value in <output>.
 WEB AUDIO/TONE: always init inside user gesture handler.
-RESIZE: window.addEventListener('resize', () => { /* re-size all canvases/renderers/charts */ });
+RESIZE: window.addEventListener('resize', () => { /* resize all */ });
 
 ═══════════════════════════════════════════════════
 QUALITY SELF-CHECK
 ═══════════════════════════════════════════════════
 
-☑ Used the CORRECT library from the routing table
+☑ Correct library from routing table
 ☑ HISTORY: vis-timeline with correct groups, real events, working detail panel
-☑ MATH: KaTeX loaded SYNCHRONOUSLY (no defer), render() called after DOM ready
-☑ GEOGRAPHY: real lat/lng coords, NO fake rectangles, CartoDB dark tiles
+☑ MATH: KaTeX synchronous (NO defer/async), katex.render() ONLY (NO renderMathInElement), NO raw LaTeX in HTML body, canvas DPR-scaled with explicit container height, labeled axes on all coordinate planes
+☑ GEOGRAPHY: real lat/lng, NO rectangles, CartoDB dark tiles
 ☑ At least 2 interactive elements
-☑ Dark everywhere (Three.js, ECharts, Leaflet, vis-timeline, Mermaid all dark)
+☑ Dark everywhere
 ☑ All visualizations resize on window resize
 ☑ No empty visualization areas
-☑ Complete file — no TODOs, no placeholders
+☑ Complete file, no TODOs
 
 ═══════════════════════════════════════════════════
 FINAL REMINDERS
 ═══════════════════════════════════════════════════
 
-HISTORY? → vis-timeline, grouped, real events, detail panel. NOT Canvas SVG lines.
-GEOGRAPHY? → Leaflet dark map, real lat/lng, circle markers or real polygons. NOT colored rectangles.
-MATH? → KaTeX synchronous load, render() after DOM, interactive slider. NOT plain text.
+HISTORY? → vis-timeline, correct groups, real events, detail panel. NOT Canvas.
+GEOGRAPHY? → Leaflet dark map, real lat/lng, circle markers or real polygons. NOT rectangles.
+MATH? → katex.render() on divs only, NO auto-render, NO raw \( \) in HTML, slider re-renders formula AND updates visualization, labeled axes. NOT plain text.
 CS? → GSAP animated divs + Highlight.js code. NOT static text.
-MUSIC? → VexFlow notation + Tone.js audio. NOT a text list.
+MUSIC? → VexFlow notation + Tone.js audio. NOT a list.
 DATA? → ECharts animated. NOT a table.
 NETWORKS? → D3.js or vis-network. NOT a bullet list.
 
