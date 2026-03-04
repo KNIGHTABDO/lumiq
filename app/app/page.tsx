@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import VoiceCapture from "@/components/VoiceCapture";
 import ConceptRenderer from "@/components/ConceptRenderer";
-import HistoryPanel, { saveToHistory, HistoryEntry } from "@/components/HistoryPanel";
+import HistoryPanel, { HistoryButton, saveToHistory, HistoryEntry, loadHistory } from "@/components/HistoryPanel";
 
 export default function AppPage() {
   const [streamingHtml, setStreamingHtml] = useState("");
@@ -12,6 +12,8 @@ export default function AppPage() {
   const [currentLabel, setCurrentLabel] = useState("");
   const [currentHistoryId, setCurrentHistoryId] = useState<string>();
   const [voiceState, setVoiceState] = useState<"idle" | "recording" | "processing">("idle");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCount, setHistoryCount] = useState(() => { try { return loadHistory().length; } catch { return 0; } });
   const lastLabelRef = useRef("");
 
   const handleStreaming = useCallback((partial: string) => {
@@ -29,6 +31,7 @@ export default function AppPage() {
     const label = lastLabelRef.current || "Concept";
     const entry = saveToHistory(label, html);
     setCurrentHistoryId(entry.id);
+    setHistoryCount(c => c + 1);
   }, []);
 
   const handleHistorySelect = useCallback((entry: HistoryEntry) => {
@@ -45,9 +48,10 @@ export default function AppPage() {
         <a href="/" className="app-logo"><span className="logo-text">LUMIQ</span></a>
         <div className="header-right">
           {currentLabel && <span className="current-label">{currentLabel}</span>}
-          <HistoryPanel onSelect={handleHistorySelect} currentId={currentHistoryId} />
+          <HistoryButton onClick={() => setHistoryOpen(v => !v)} count={historyCount} />
         </div>
       </header>
+
       <main className="app-main">
         <div className={`input-panel ${hasContent ? "compact" : "centered"}`}>
           <div className="input-inner">
@@ -71,6 +75,15 @@ export default function AppPage() {
         </div>
         {hasContent && <div className="renderer-panel"><ConceptRenderer html={displayHtml} isStreaming={isStreaming} /></div>}
       </main>
+
+      {/* History drawer — rendered at root level, outside any stacking context */}
+      <HistoryPanel
+        onSelect={handleHistorySelect}
+        currentId={currentHistoryId}
+        isOpen={historyOpen}
+        onToggle={() => setHistoryOpen(v => !v)}
+      />
+
       <style jsx>{`
         .app-layout { min-height: 100vh; background: #0a0a0a; display: flex; flex-direction: column; color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
         .app-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid #0f0f0f; position: sticky; top: 0; z-index: 50; background: rgba(10,10,10,0.9); backdrop-filter: blur(12px); }
