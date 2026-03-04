@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
     }
 
     const model = genai.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-3.1-flash-lite-preview",
       systemInstruction: LUMIQ_SYSTEM_PROMPT,
       generationConfig: {
-        temperature: 0.7,
+        temperature: 1.0,
         maxOutputTokens: 32768,
       },
     });
