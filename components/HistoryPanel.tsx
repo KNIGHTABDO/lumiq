@@ -22,9 +22,6 @@ export function loadHistory(): HistoryEntry[] {
 interface Props {
   onSelect: (e: HistoryEntry) => void;
   currentId?: string;
-  /** If true, only renders the toggle button (used when button lives in header) */
-  buttonOnly?: boolean;
-  /** External control */
   isOpen?: boolean;
   onToggle?: () => void;
 }
@@ -82,6 +79,16 @@ export default function HistoryPanel({ onSelect, currentId, isOpen = false, onTo
   useEffect(() => { setHistory(loadHistory()); }, []);
   useEffect(() => { if (isOpen) setHistory(loadHistory()); }, [isOpen]);
 
+  // Prevent body scroll when open on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
+    return () => { document.documentElement.style.overflow = ""; };
+  }, [isOpen]);
+
   const deleteEntry = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = history.filter(h => h.id !== id);
@@ -98,21 +105,22 @@ export default function HistoryPanel({ onSelect, currentId, isOpen = false, onTo
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — z-index 2147483640 to guarantee above iframe */}
       {isOpen && (
         <div
           onClick={onToggle}
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 998,
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(2px)",
+            zIndex: 2147483640,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(3px)",
+            WebkitBackdropFilter: "blur(3px)",
           }}
         />
       )}
 
-      {/* Drawer */}
+      {/* Drawer — z-index 2147483641 (max safe int - 6) to be above everything including iframes */}
       <div
         style={{
           position: "fixed",
@@ -123,14 +131,16 @@ export default function HistoryPanel({ onSelect, currentId, isOpen = false, onTo
           maxWidth: "85vw",
           background: "#0d0d0d",
           borderLeft: "1px solid #1a1a1a",
-          zIndex: 999,
+          zIndex: 2147483641,
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
           display: "flex",
           flexDirection: "column",
+          // Ensure this element is never clipped by a parent stacking context
+          willChange: "transform",
         }}
       >
-        {/* Drawer header */}
+        {/* Header */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -144,15 +154,17 @@ export default function HistoryPanel({ onSelect, currentId, isOpen = false, onTo
             onClick={onToggle}
             aria-label="Close history"
             style={{ background: "none", border: "none", color: "#525252", cursor: "pointer", padding: 4, borderRadius: 4, display: "flex", alignItems: "center" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#a3a3a3"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#525252"; }}
           >
             <CloseIcon />
           </button>
         </div>
 
-        {/* Drawer body */}
+        {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
           {history.length === 0 ? (
-            <div style={{ padding: "48px 16px", textAlign: "center", color: "#333", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <div style={{ padding: "48px 16px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
               <ClockIcon />
               <p style={{ fontSize: "0.82rem", color: "#404040", lineHeight: 1.5, maxWidth: 200 }}>Your generated concepts will appear here</p>
             </div>
