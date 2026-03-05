@@ -27,6 +27,16 @@ export default function ConceptRenderer({ html, isStreaming, onExpand }: Concept
 
   useEffect(() => { if (html && !isVisible) requestAnimationFrame(() => setIsVisible(true)); }, [html]);
 
+  // Escape key to close fullscreen
+  useEffect(() => {
+    if (!isExpanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsExpanded(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isExpanded]);
+
   if (!html) return null;
 
   return (
@@ -35,13 +45,25 @@ export default function ConceptRenderer({ html, isStreaming, onExpand }: Concept
         {isStreaming && <div className="stream-indicator"><div className="stream-bar" /><span>Building experience...</span></div>}
         <div className="iframe-wrapper">
           <iframe ref={iframeRef} sandbox="allow-scripts allow-same-origin" title="LUMIQ Concept Experience" className="concept-iframe" />
-          {!isStreaming && <div className="iframe-controls"><button className="expand-btn" onClick={() => { setIsExpanded(true); onExpand?.(); }} title="Full screen"><ExpandIcon /></button></div>}
+          {!isStreaming && (
+            <div className="iframe-controls">
+              <button
+                className="expand-btn"
+                onClick={() => { setIsExpanded(true); onExpand?.(); }}
+                title="Full screen (or press F)"
+              >
+                <ExpandIcon /><span className="expand-label">Full screen</span>
+              </button>
+            </div>
+          )}
           {isStreaming && <div className="shimmer-overlay" />}
         </div>
       </div>
       {isExpanded && (
-        <div className="fullscreen-view">
-          <button className="close-fullscreen" onClick={() => setIsExpanded(false)}><CollapseIcon /><span>Exit fullscreen</span></button>
+        <div className="fullscreen-view" role="dialog" aria-modal="true" aria-label="Fullscreen concept view">
+          <button className="close-fullscreen" onClick={() => setIsExpanded(false)}>
+            <CollapseIcon /><span>Exit fullscreen</span><span className="esc-hint">Esc</span>
+          </button>
           <iframe sandbox="allow-scripts allow-same-origin" title="LUMIQ Fullscreen" srcDoc={html} className="fullscreen-iframe" />
         </div>
       )}
@@ -56,21 +78,66 @@ export default function ConceptRenderer({ html, isStreaming, onExpand }: Concept
         .iframe-wrapper { position: relative; width: 100%; border: 1px solid #1a1a1a; border-radius: 12px; overflow: hidden; background: #0d0d0d; }
         .concept-iframe { width: 100%; height: 520px; border: none; display: block; background: #0a0a0a; }
         @media (max-width: 767px) { .concept-iframe { height: 420px; } }
-        .iframe-controls { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; opacity: 0; transition: opacity 0.2s; }
-        .iframe-wrapper:hover .iframe-controls { opacity: 1; }
-        .expand-btn { background: rgba(10,10,10,0.9); border: 1px solid #262626; border-radius: 6px; color: #a3a3a3; padding: 6px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; transition: border-color 0.15s, color 0.15s; backdrop-filter: blur(8px); }
+        /* Controls always visible on mobile, hover-reveal on desktop */
+        .iframe-controls {
+          position: absolute; top: 12px; right: 12px;
+          display: flex; gap: 8px;
+          opacity: 1;
+          transition: opacity 0.2s;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .iframe-controls { opacity: 0; }
+          .iframe-wrapper:hover .iframe-controls { opacity: 1; }
+        }
+        .expand-btn {
+          background: rgba(10,10,10,0.88);
+          border: 1px solid #262626;
+          border-radius: 6px;
+          color: #a3a3a3;
+          padding: 6px 10px;
+          cursor: pointer;
+          display: flex; align-items: center; gap: 6px;
+          font-size: 0.75rem;
+          transition: border-color 0.15s, color 0.15s;
+          backdrop-filter: blur(8px);
+          -webkit-tap-highlight-color: transparent;
+        }
         .expand-btn:hover { border-color: #404040; color: #f5f5f5; }
+        .expand-label { display: none; }
+        @media (min-width: 640px) { .expand-label { display: inline; } }
         .shimmer-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.01) 50%, transparent 60%); background-size: 200% 200%; animation: shimmer 2s linear infinite; pointer-events: none; }
         @keyframes shimmer { 0% { background-position: 200% 200%; } 100% { background-position: -200% -200%; } }
         .fullscreen-view { position: fixed; inset: 0; z-index: 1000; background: #0a0a0a; display: flex; flex-direction: column; animation: fade-in 0.25s ease-out; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .close-fullscreen { position: absolute; top: 16px; right: 16px; z-index: 10; background: rgba(10,10,10,0.9); border: 1px solid #262626; border-radius: 6px; color: #a3a3a3; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; transition: border-color 0.15s, color 0.15s; backdrop-filter: blur(8px); }
+        .close-fullscreen {
+          position: absolute; top: 16px; right: 16px; z-index: 10;
+          background: rgba(10,10,10,0.9);
+          border: 1px solid #262626;
+          border-radius: 6px;
+          color: #a3a3a3;
+          padding: 8px 12px;
+          cursor: pointer;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 0.8rem;
+          transition: border-color 0.15s, color 0.15s;
+          backdrop-filter: blur(8px);
+          -webkit-tap-highlight-color: transparent;
+        }
         .close-fullscreen:hover { border-color: #404040; color: #f5f5f5; }
+        .esc-hint {
+          font-size: 0.65rem;
+          color: #333;
+          border: 1px solid #222;
+          border-radius: 3px;
+          padding: 1px 5px;
+          font-family: monospace;
+          letter-spacing: 0;
+        }
         .fullscreen-iframe { flex: 1; width: 100%; border: none; background: #0a0a0a; }
       `}</style>
     </>
   );
 }
 
-function ExpandIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>; }
-function CollapseIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" /></svg>; }
+function ExpandIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>; }
+function CollapseIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" /></svg>; }
